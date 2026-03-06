@@ -108,16 +108,17 @@
             padding-bottom: 4px;
         }
 
-        /* Tag + fact wrapper — sits at bottom of the feed, 2-row internal grid */
+        /* Tag + fact wrapper — sits at bottom of the feed */
         .fact-group {
-            display: grid;
-            grid-template-rows: 26px 1fr;
+            position: relative;      /* establishes stacking context */
             align-self: end;
             overflow: hidden;
-            gap: 2px;
+            /* Fixed total height: 26px tag row + 4px gap + fact text area */
+            min-height: 26px;
+            padding-top: 30px;       /* reserves space above for the absolutely-positioned tag */
         }
 
-        /* fact-highlight: typography for the fact text row only */
+        /* fact-highlight: typography for the fact text only */
         .fact-highlight {
             font-family: 'Michroma', sans-serif;
             font-size: clamp(9px, 2.2vw, 11px);
@@ -133,12 +134,16 @@
         }
 
         .fact-tag {
+            /* Absolutely pinned to the top of fact-group — nothing below can move it */
+            position: absolute;
+            top: 0;
+            left: 0;
             display: inline-flex;
             align-items: center;
-            /* Tag lives in its own 26px row — height is fixed by the grid, not its content */
+            height: 26px;
             background: rgba(var(--cyan), 0.1);
             border: 1px solid rgba(var(--cyan), 0.3);
-            padding: 2px 8px;
+            padding: 0 8px;
             border-radius: 4px;
             color: #22d3ee;
             font-family: 'Orbitron', sans-serif;
@@ -146,16 +151,12 @@
             letter-spacing: 2px;
             box-shadow: 0 0 10px rgba(var(--cyan), 0.2);
             white-space: nowrap;
-            align-self: center;
-            width: fit-content;
-            position: relative;
             z-index: 3;
         }
 
         #fact-text {
             text-shadow: 0 0 10px rgba(255,255,255,0.3);
             overflow: hidden;
-            padding-top: 1px;
         }
 
         /* Scanline overlay — sits above everything in the feed */
@@ -276,10 +277,12 @@
         }
         @media (max-width: 639px) {
             #artist-name {
-                white-space: normal;
-                overflow: visible;
-                text-overflow: unset;
-                line-height: 1.4;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip;
+                /* Marquee: if text overflows, scroll it */
+                animation: marquee-scroll 8s linear infinite;
+                animation-play-state: paused;
             }
         }
 
@@ -297,11 +300,25 @@
         }
         @media (max-width: 639px) {
             #song-name {
-                white-space: normal;
-                overflow: visible;
-                text-overflow: unset;
-                line-height: 1.4;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: clip;
+                animation: marquee-scroll 10s linear infinite;
+                animation-play-state: paused;
             }
+        }
+
+        @keyframes marquee-scroll {
+            0%   { transform: translateX(0); }
+            20%  { transform: translateX(0); }   /* pause at start */
+            80%  { transform: translateX(-60%); } /* scroll left */
+            100% { transform: translateX(0); }   /* snap back */
+        }
+
+        /* Activate marquee only when playing */
+        .is-playing #artist-name,
+        .is-playing #song-name {
+            animation-play-state: running;
         }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
@@ -319,13 +336,17 @@
             top: 100%;
             left: 0;
             transform: none;
-            width: clamp(200px, 80vw, 420px);
+            /* Desktop: single line */
+            width: max-content;
             overflow: visible;
             pointer-events: none;
             z-index: 2000;
         }
-        @media (min-width: 640px) {
-            .backronym-overflow { left: 0; transform: none; }
+        /* Mobile: constrain width so text is forced to wrap at ~halfway */
+        @media (max-width: 639px) {
+            .backronym-overflow {
+                width: clamp(160px, 55vw, 240px);
+            }
         }
 
         #aegis-backronym {
@@ -523,12 +544,12 @@
 
         @media (max-width: 639px) {
             #tech-badges {
-                /* Top-right corner on mobile, clear of the branding */
+                /* Sits below the branding block on mobile */
                 right: 0.75rem;
-                top: calc(var(--safe-top) + 4.5rem);
+                top: calc(var(--safe-top) + 5.5rem);
                 transform: none;
-                gap: 0.75rem;
-                opacity: 0.5;
+                gap: 0.6rem;
+                opacity: 0.7;
             }
         }
 
