@@ -20,7 +20,6 @@
 
         html {
             height: 100%;
-            /* Prevent iOS bounce that breaks fixed layout */
             overscroll-behavior: none;
         }
 
@@ -29,9 +28,8 @@
             background-color: var(--bg-deep);
             color: #ffffff;
             margin: 0;
-            /* Mobile: full height, no overflow hidden so browser chrome doesn't clip content */
             min-height: 100%;
-            min-height: 100dvh; /* dynamic viewport height — respects mobile browser bars */
+            min-height: 100dvh;
             overflow: hidden;
             overscroll-behavior: none;
         }
@@ -50,7 +48,6 @@
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             width: 100%;
-            /* Smaller on mobile so it doesn't overpower the UI */
             max-width: min(480px, 90vw);
             z-index: -1;
             opacity: 0.97;
@@ -93,14 +90,12 @@
             min-height: 160px;
             max-height: 160px;
             flex-shrink: 0;
-            /* 2-row grid: header locked top, fact-group pushed to bottom */
             display: grid;
             grid-template-rows: auto 1fr;
             position: relative;
             overflow: hidden;
         }
 
-        /* Mobile: taller feed to accommodate larger font sizes */
         @media (max-width: 639px) {
             .system-feed {
                 height: 180px;
@@ -109,7 +104,6 @@
             }
         }
 
-        /* Header row — Neural Insight + status dot */
         .system-feed > .feed-header {
             display: flex;
             justify-content: space-between;
@@ -117,17 +111,14 @@
             padding-bottom: 4px;
         }
 
-        /* Tag + fact wrapper — sits at bottom of the feed */
         .fact-group {
-            position: relative;      /* establishes stacking context */
+            position: relative;
             align-self: end;
             overflow: hidden;
-            /* Fixed total height: 26px tag row + 4px gap + fact text area */
             min-height: 26px;
-            padding-top: 30px;       /* reserves space above for the absolutely-positioned tag */
+            padding-top: 30px;
         }
 
-        /* fact-highlight: typography for the fact text only */
         .fact-highlight {
             font-family: 'Michroma', sans-serif;
             font-size: clamp(9px, 2.2vw, 11px);
@@ -143,7 +134,6 @@
         }
 
         .fact-tag {
-            /* Absolutely pinned to the top of fact-group — nothing below can move it */
             position: absolute;
             top: 0;
             left: 0;
@@ -168,7 +158,6 @@
             overflow: hidden;
         }
 
-        /* Scanline overlay — sits above everything in the feed */
         .system-feed::before {
             content: "";
             position: absolute;
@@ -186,7 +175,6 @@
         /* ─── ORB ────────────────────────────────────── */
         #aegis-orb-container {
             position: relative;
-            /* Fluid orb size: 96px on small screens → 128px on larger */
             width: clamp(96px, 22vw, 128px);
             height: clamp(96px, 22vw, 128px);
             display: flex;
@@ -250,19 +238,22 @@
         }
         .is-playing #streaming-tag-top { opacity: 0.7; }
 
-        /* ─── TRACK INFO: two caged window boxes below orb ─── */
+        /* ─── TRACK INFO: centred below orb, matching orb width ─── */
         #track-info-display {
             position: absolute;
             top: 100%; left: 50%;
             transform: translateX(-50%);
             margin-top: 5px;
-            width: clamp(100px, 110%, 150px); /* hugs the orb width */
+            /* Match the orb's fluid width so text is truly centred under it */
+            width: clamp(96px, 22vw, 128px);
             opacity: 0;
             transition: opacity 0.5s ease;
             pointer-events: none;
             display: flex;
             flex-direction: column;
             gap: 2px;
+            /* Centre all children horizontally */
+            align-items: center;
         }
         .is-playing #track-info-display { opacity: 0.9; }
 
@@ -272,6 +263,9 @@
             height: 14px;
             overflow: hidden;
             position: relative;
+            /* Centre content within the window */
+            display: flex;
+            justify-content: center;
         }
 
         /* The scrolling text lives inside the window */
@@ -280,12 +274,17 @@
             display: inline-block;
             white-space: nowrap;
             position: absolute;
-            left: 0; top: 0;
+            /* Start centred; animation will handle the scroll */
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
             font-family: 'Fira Code', monospace;
             font-weight: 600;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             line-height: 14px;
+            /* Centre text within the element itself */
+            text-align: center;
         }
 
         #artist-name {
@@ -299,22 +298,29 @@
             text-shadow: 0 0 8px rgba(34,211,238,0.5);
         }
 
-        /* LED scroll: continuous rightward-entry loop */
-        @keyframes led-scroll {
-            0%      { transform: translateX(0); }
-            15%     { transform: translateX(0); }        /* hold */
-            85%     { transform: translateX(-120%); }    /* scroll off left */
-            85.01%  { transform: translateX(110%); }     /* jump to right */
-            100%    { transform: translateX(0); }        /* arrive back */
+        /*
+         * Slow, equal-speed scroll:
+         * - Starts centred (translateX(-50%))
+         * - Holds for 20% so user can read
+         * - Glides left at linear pace over 40%  → exits left
+         * - Jumps to right instantly (0.01% gap)
+         * - Glides back to centre over the final 40% — same linear speed as exit
+         * The entry and exit durations are identical (40% each), giving equal speeds.
+         */
+        @keyframes led-scroll-centered {
+            0%      { transform: translateX(-50%); }       /* centred — hold start */
+            20%     { transform: translateX(-50%); }       /* hold readable */
+            60%     { transform: translateX(-160%); }      /* scroll off LEFT  (40% of duration) */
+            60.01%  { transform: translateX(80%); }        /* instant jump to RIGHT */
+            100%    { transform: translateX(-50%); }       /* arrive back at centre (40% of duration) */
         }
 
-        /* Only scroll when playing AND text actually overflows the window */
-        .is-playing #artist-name { animation: led-scroll 8s linear infinite; }
-        .is-playing #song-name   { animation: led-scroll 10s linear infinite; }
+        /* Only scroll when playing AND text actually overflows — same duration for equal speed */
+        .is-playing #artist-name { animation: led-scroll-centered 14s linear infinite; }
+        .is-playing #song-name   { animation: led-scroll-centered 14s linear infinite; }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
         #aegis-greeting {
-            /* Fluid display size: 40px phone → 72px desktop */
             font-size: clamp(2.5rem, 10vw, 4.5rem);
             line-height: 0.9;
             padding-right: 4px;
@@ -327,13 +333,11 @@
             top: 100%;
             left: 0;
             transform: none;
-            /* Desktop: single line */
             width: max-content;
             overflow: visible;
             pointer-events: none;
             z-index: 2000;
         }
-        /* Mobile: constrain width so text is forced to wrap at ~halfway */
         @media (max-width: 639px) {
             .backronym-overflow {
                 width: clamp(160px, 55vw, 240px);
@@ -357,7 +361,6 @@
 
         .font-mech { font-family: 'Chakra Petch', sans-serif; }
 
-        /* Proximity glow — desktop mouse effect */
         .proximity-glow {
             position: relative;
             color: transparent;
@@ -370,7 +373,6 @@
             transition: filter 0.3s ease, transform 0.3s ease;
             filter: drop-shadow(0 0 5px rgba(var(--cyan),0.1));
         }
-        /* On mobile use solid colour — no mouse to track */
         @media (hover: none) {
             .proximity-glow {
                 color: #22d3ee;
@@ -383,12 +385,11 @@
 
         /* ─── VOICE BUTTON ───────────────────────────── */
         #vapi-button {
-            /* Minimum 44px tall — Apple/Google tap target guideline */
             min-height: 44px;
             padding: 0.75rem 1.25rem;
             font-size: clamp(11px, 3vw, 13px);
             border-radius: 14px;
-            touch-action: manipulation; /* snappy tap, no 300ms delay */
+            touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
         }
 
@@ -406,18 +407,15 @@
             width: 95%;
             max-width: 1100px;
             z-index: 1000;
-            /* Desktop: sits just above the tech badges (~48px tall + 1rem gap) */
             bottom: 5rem;
         }
 
-        /* Mobile: pin near bottom with safe area */
         @media (max-width: 639px) {
             #main-hud {
                 bottom: calc(0.75rem + var(--safe-bottom));
             }
         }
 
-        /* Tablet (640–1023px): slightly more breathing room */
         @media (min-width: 640px) and (max-width: 1023px) {
             #main-hud {
                 bottom: calc(4rem + var(--safe-bottom));
@@ -461,7 +459,7 @@
             position: relative;
         }
 
-        /* ─── ORB WRAPPER — touch target ────────────── */
+        /* ─── ORB WRAPPER ────────────────────────────── */
         #aegis-orb-wrapper {
             min-width: 44px;
             min-height: 44px;
@@ -472,13 +470,11 @@
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
             transition: transform 0.2s ease;
-            /* Extra top padding to visually centre orb+streaming+track as a group */
             padding-top: 22px;
             padding-bottom: 28px;
             flex-shrink: 0;
         }
 
-        /* Text group — shifted right with padding, respects HUD borders */
         .voice-text-group {
             flex-grow: 1;
             display: flex;
@@ -491,7 +487,6 @@
         /* ─── BRANDING ───────────────────────────────── */
         #branding {
             position: fixed;
-            /* Respect iOS notch */
             top: calc(0.75rem + var(--safe-top));
             left: 0.875rem;
             z-index: 30;
@@ -501,7 +496,6 @@
         #branding h1 {
             font-family: 'Orbitron', sans-serif;
             color: #22d3ee;
-            /* Fluid: 20px → 48px */
             font-size: clamp(1.25rem, 5vw, 3rem);
             font-weight: 900;
             letter-spacing: 0.12em;
@@ -522,7 +516,6 @@
         /* ─── TECH BADGES ────────────────────────────── */
         #tech-badges {
             position: fixed;
-            /* Desktop: right edge, vertically centred */
             right: 1.25rem;
             top: calc(55% + 1.5rem);
             transform: translateY(-50%);
@@ -534,7 +527,6 @@
             z-index: 1001;
         }
 
-        /* Mobile: left side, below branding subtitle with a clear gap */
         @media (max-width: 639px) {
             #tech-badges {
                 right: auto;
@@ -547,12 +539,10 @@
             }
         }
 
-        /* Tablet */
         @media (min-width: 640px) and (max-width: 1023px) {
             #tech-badges { right: 1rem; gap: 0.85rem; }
         }
 
-        /* Every badge row: icon LEFT, text right, left-anchored */
         .tech-badge-item {
             display: flex;
             flex-direction: row;
@@ -602,7 +592,6 @@
             transform: translate(-50%, -50%) scale(0.9);
             background: rgba(15, 23, 42, 0.97);
             border: 2px solid #22d3ee;
-            /* Fluid padding */
             padding: clamp(1.25rem, 5vw, 2.5rem);
             border-radius: 20px;
             z-index: 2000;
@@ -610,7 +599,6 @@
             pointer-events: none;
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 0 100px rgba(var(--cyan),0.4);
-            /* Take up most of screen on small phones */
             width: min(90vw, 500px);
         }
         #jarvis-notice.active {
@@ -763,7 +751,7 @@
             {name: "Hailee Steinfeld, BloodPop - Capital Letters", url: "https://www.dropbox.com/scl/fi/atv2ywsro46ui5ldemjfh/Hailee-Steinfeld-Capital-Letters.mp3?rlkey=fepwy7znnhpg0kmax9qskclxr&st=htx4kffq&raw=1"},
             {name: "Jennie - like JENNIE", url: "https://www.dropbox.com/scl/fi/77fg7kqxgr06ckyjvij7a/Jennie-like-JENNIE.mp3?rlkey=1t20qitxp12gcblyshrkya4yd&st=nin3ny9o&raw=1"},
             {name: "Lana Del Rey - Cinnamon Girl", url: "https://www.dropbox.com/scl/fi/wf6dbzq6u7d5flc24hf09/Lana-Del-Rey-Cinnamon-Girl.mp3?rlkey=t09v8ppusxuzy2tchdoxc3zwa&st=al2x4gt7&raw=1"},
-            {name: "Lana Del Rey - Doin' Time", url: "https://www.dropbox.com/scl/fi/zpo5qyrchwskxlr6huj7j/Lana-Del-Rey-Doin-Time.mp3?rlkey=6mxmxns58kph4dta0phna3did&st=0355ciaw&raw=1"},
+            {name: "Lana Del Rey - Doin' Time", url: "https://www.dropbox.com/scl/fi/zpo5qyrchwskxlr6huj7j/Lana-Del-Rey-Doin-Time.mp3?rlkey=6mxmxns58kph4dta0phpa3did&st=0355ciaw&raw=1"},
             {name: "Lana Del Rey - Say Yes To Heaven", url: "https://www.dropbox.com/scl/fi/js7oi8gqw5v2k3r5gezur/Lana-Del-Rey-Say-Yes-To-Heaven.mp3?rlkey=sjzk9fj2l89ilvx4f30x8f7lw&st=sda3a4c7&raw=1"},
             {name: "Lana Del Rey - Young And Beautiful", url: "https://www.dropbox.com/scl/fi/tmro4q82a5pycy7dzs7k9/Lana-Del-Rey-Young-And-Beautiful.mp3?rlkey=jutt7mke0q5wcnb3zpy857eju&st=bdtwb3uv&raw=1"},
             {name: "Laufey - From the Start", url: "https://www.dropbox.com/scl/fi/1ngmk0o4lraxegqqm60ks/Laufey-From-The-Start.mp3?rlkey=mhywheh6tzbz0cptrp4qgii9a&st=h9ap4qco&raw=1"},
@@ -839,7 +827,6 @@
             type();
         };
 
-        // Close notice on overlay tap (mobile UX)
         document.getElementById('jarvis-overlay').addEventListener('click', () => {
             document.getElementById('jarvis-notice').classList.remove('active');
             document.getElementById('jarvis-overlay').classList.remove('active');
@@ -882,7 +869,6 @@
             const greeting = document.getElementById('aegis-greeting');
             shufflePlaylist();
 
-            // Mouse proximity — desktop only
             document.addEventListener('mousemove', (e) => {
                 if (!greeting) return;
                 const rect = greeting.getBoundingClientRect();
@@ -925,7 +911,6 @@
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
 
-        // Touch support for particle repulsion
         const pointer = { x: -2000, y: -2000 };
         window.addEventListener('mousemove', e => { pointer.x = e.clientX; pointer.y = e.clientY; });
         window.addEventListener('touchmove', e => {
@@ -933,7 +918,6 @@
         }, { passive: true });
         window.addEventListener('touchend', () => { pointer.x = -2000; pointer.y = -2000; });
 
-        // Detect mobile — fewer particles for performance
         const isMobile = window.matchMedia('(max-width: 639px)').matches;
         const MAX_PARTICLES = isMobile ? 300 : 800;
 
