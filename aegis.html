@@ -570,22 +570,23 @@
 
         @media (max-width: 639px) {
             #tech-badges {
-                right: 0.75rem;
+                right: auto;
+                left: 0.75rem;
                 top: calc(var(--safe-top) + 4.5rem);
                 transform: none;
+                align-items: flex-start;
                 gap: 0.75rem;
                 opacity: 1;
-                align-items: flex-end;
             }
 
             .tech-badge-item {
                 flex-direction: row;
-                justify-content: flex-end;
+                justify-content: flex-start;
             }
 
-            /* On mobile: icon moves to LEFT of text */
-            .tech-badge-item i  { order: -1; }
-            .tech-badge-item span { order: 0; }
+            /* Icon always left of text on mobile */
+            .tech-badge-item i    { order: 0; }
+            .tech-badge-item span { order: 1; }
         }
 
         @media (min-width: 640px) and (max-width: 1023px) {
