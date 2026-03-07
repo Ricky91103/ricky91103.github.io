@@ -100,9 +100,9 @@
 
         @media (max-width: 639px) {
             .system-feed {
-                height: 192px;
-                min-height: 192px;
-                max-height: 192px;
+                height: 162px;
+                min-height: 162px;
+                max-height: 162px;
             }
         }
 
@@ -158,10 +158,10 @@
             z-index: 2;
         }
 
-        /* Mobile: tag gets extra gap below header; fact untouched */
+        /* Mobile: same inter-element gaps, group shifted lower within shorter feed */
         @media (max-width: 639px) {
-            .fact-tag      { top: 58px; }
-            .fact-highlight { top: 116px; }
+            .fact-tag       { top: 70px; }
+            .fact-highlight { top: 128px; }
         }
 
         #fact-text {
