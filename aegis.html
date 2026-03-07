@@ -231,7 +231,7 @@
             position: absolute;
             bottom: 100%; left: 50%;
             transform: translateX(-50%);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             font-family: 'Orbitron', sans-serif;
             font-size: 8px;
             text-transform: uppercase;
@@ -249,7 +249,7 @@
             position: absolute;
             top: 100%; left: 50%;
             transform: translateX(-50%);
-            margin-top: 2px;
+            margin-top: 8px;
             opacity: 0;
             transition: opacity 0.5s ease;
             pointer-events: none;
@@ -289,6 +289,13 @@
 
         #artist-name { font-size: 8px; color: #22d3ee; }
         #song-name   { font-size: 9px; color: #ffffff; text-shadow: 0 0 8px rgba(34,211,238,0.5); }
+
+        /* PC/tablet: larger track font, taller windows to match */
+        @media (min-width: 640px) {
+            .track-window        { height: 18px; }
+            #artist-name         { font-size: 13px; line-height: 18px; }
+            #song-name           { font-size: 14px; line-height: 18px; }
+        }
 
         /* ── MOBILE ONLY: 15-char clipping window + scroll animation ── */
         @media (max-width: 639px) {
@@ -472,10 +479,13 @@
             touch-action: manipulation;
             transition: transform 0.2s ease;
             flex-shrink: 0;
-            /* PC: symmetric padding — streaming above and track below
-               are each 10px from the orb edge, both equidistant from HUD border */
-            padding-top: 10px;
-            padding-bottom: 10px;
+            /*
+             * PC: equal padding top & bottom so the orb sits exactly mid-HUD.
+             * streaming text (bottom:100% - 8px) and track text (top:100% + 8px)
+             * are then each 8px from the orb — equidistant above and below.
+             */
+            padding-top: 26px;
+            padding-bottom: 26px;
         }
 
         /* Mobile: asymmetric padding */
@@ -579,11 +589,18 @@
 
         .tech-badge-item span {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(12px, 1.3vw, 14px);
+            font-size: clamp(7px, 1.3vw, 9px);   /* mobile default */
             letter-spacing: 0.1em;
             text-transform: uppercase;
             color: #ffffff;
             font-weight: 700;
+        }
+
+        /* PC/tablet: badge font +5 units */
+        @media (min-width: 640px) {
+            .tech-badge-item span {
+                font-size: clamp(12px, 1.3vw, 14px);
+            }
         }
 
         /* ─── JARVIS OVERLAY ─────────────────────────── */
