@@ -100,9 +100,9 @@
 
         @media (max-width: 639px) {
             .system-feed {
-                height: 180px;
-                min-height: 180px;
-                max-height: 180px;
+                height: 192px;
+                min-height: 192px;
+                max-height: 192px;
             }
         }
 
@@ -158,8 +158,9 @@
             z-index: 2;
         }
 
-        /* Mobile: push fact further south, tag stays locked */
+        /* Mobile: tag gets extra gap below header; fact untouched */
         @media (max-width: 639px) {
+            .fact-tag      { top: 58px; }
             .fact-highlight { top: 116px; }
         }
 
@@ -615,6 +616,11 @@
             letter-spacing: 0.12em;
             text-transform: uppercase;
             color: #ffffff;
+            font-weight: 700;
+        }
+
+        @media (max-width: 639px) {
+            .tech-badge-item span { font-weight: 800; }
         }
 
         /* ─── JARVIS OVERLAY ─────────────────────────── */
