@@ -482,17 +482,8 @@
             touch-action: manipulation;
             transition: transform 0.2s ease;
             flex-shrink: 0;
-            /*
-             * Symmetric padding = orb equidistant between streaming text
-             * above and track text below. The hud-inner align-items:center
-             * then places the whole group centred between HUD borders.
-             * padding = streaming_text_height(10) + gap(8) = 18px top
-             *         = track_text_height(46) + gap(8) = 54px bottom
-             * To keep orb centred, use the larger of the two for both:
-             * 54px top and 54px bottom — orb floats in the true middle.
-             */
-            padding-top: 54px;
-            padding-bottom: 54px;
+            padding-top: 22px;
+            padding-bottom: 22px;
         }
 
         /* Mobile: asymmetric padding */
