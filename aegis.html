@@ -231,6 +231,8 @@
             position: absolute;
             bottom: 100%; left: 50%;
             transform: translateX(-50%);
+            /* gap between streaming text bottom and orb top —
+               mirrors the margin-top on #track-info-display below */
             margin-bottom: 8px;
             font-family: 'Orbitron', sans-serif;
             font-size: 8px;
@@ -249,6 +251,7 @@
             position: absolute;
             top: 100%; left: 50%;
             transform: translateX(-50%);
+            /* gap mirrors streaming margin-bottom above */
             margin-top: 8px;
             opacity: 0;
             transition: opacity 0.5s ease;
@@ -292,9 +295,9 @@
 
         /* PC/tablet: larger track font, taller windows to match */
         @media (min-width: 640px) {
-            .track-window        { height: 18px; }
-            #artist-name         { font-size: 13px; line-height: 18px; }
-            #song-name           { font-size: 14px; line-height: 18px; }
+            .track-window        { height: 22px; }
+            #artist-name         { font-size: 15px; line-height: 22px; }
+            #song-name           { font-size: 16px; line-height: 22px; }
         }
 
         /* ── MOBILE ONLY: 15-char clipping window + scroll animation ── */
@@ -480,12 +483,16 @@
             transition: transform 0.2s ease;
             flex-shrink: 0;
             /*
-             * PC: equal padding top & bottom so the orb sits exactly mid-HUD.
-             * streaming text (bottom:100% - 8px) and track text (top:100% + 8px)
-             * are then each 8px from the orb — equidistant above and below.
+             * Symmetric padding = orb equidistant between streaming text
+             * above and track text below. The hud-inner align-items:center
+             * then places the whole group centred between HUD borders.
+             * padding = streaming_text_height(10) + gap(8) = 18px top
+             *         = track_text_height(46) + gap(8) = 54px bottom
+             * To keep orb centred, use the larger of the two for both:
+             * 54px top and 54px bottom — orb floats in the true middle.
              */
-            padding-top: 26px;
-            padding-bottom: 26px;
+            padding-top: 54px;
+            padding-bottom: 54px;
         }
 
         /* Mobile: asymmetric padding */
@@ -599,7 +606,7 @@
         /* PC/tablet: badge font +5 units */
         @media (min-width: 640px) {
             .tech-badge-item span {
-                font-size: clamp(12px, 1.3vw, 14px);
+                font-size: clamp(14px, 1.8vw, 14px);
             }
         }
 
