@@ -385,6 +385,21 @@
         @media (min-width: 640px) {
             .backronym-overflow { left: 0; transform: none; }
         }
+        /* Mobile: constrain width so text wraps to ~2 lines inside HUD */
+        @media (max-width: 639px) {
+            .backronym-overflow {
+                width: clamp(140px, 48vw, 200px);
+            }
+            #aegis-backronym {
+                white-space: normal;
+                word-break: break-word;
+                line-height: 1.55;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+        }
 
         #aegis-backronym {
             opacity: 0;
@@ -421,6 +436,21 @@
                 -webkit-text-fill-color: #22d3ee;
                 background-image: none;
                 filter: drop-shadow(0 0 12px rgba(var(--cyan),0.4));
+            }
+        }
+        /* Mobile: white by default, cyan glow on reveal */
+        @media (max-width: 639px) {
+            .proximity-glow {
+                color: #ffffff;
+                -webkit-text-fill-color: #ffffff;
+                background-image: none;
+                filter: drop-shadow(0 0 8px rgba(var(--cyan),0.25));
+            }
+            .glow-active {
+                color: #ffffff !important;
+                -webkit-text-fill-color: #ffffff !important;
+                filter: drop-shadow(0 0 18px rgba(var(--cyan),0.9)) !important;
+                text-shadow: none !important;
             }
         }
         .proximity-glow:hover { filter: drop-shadow(0 0 20px rgba(var(--cyan),0.5)); }
