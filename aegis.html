@@ -188,15 +188,6 @@
         }
 
         /* ─── ORB ────────────────────────────────────── */
-        #aegis-orb-container {
-            position: relative;
-            width: clamp(96px, 22vw, 128px);
-            height: clamp(96px, 22vw, 128px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
         #aegis-orb {
             width: 100%; height: 100%;
             border-radius: 9999px;
@@ -481,16 +472,20 @@
             touch-action: manipulation;
             transition: transform 0.2s ease;
             flex-shrink: 0;
-            /* PC/tablet: symmetric padding — streaming above, artist below */
-            padding-top: 22px;
-            padding-bottom: 22px;
+            /* PC: symmetric padding — streaming above and track below
+               are each 10px from the orb edge, both equidistant from HUD border */
+            padding-top: 10px;
+            padding-bottom: 10px;
         }
 
-        /* Mobile: restore the asymmetric padding from before */
+        /* Mobile: asymmetric padding */
         @media (max-width: 639px) {
             #aegis-orb-wrapper {
                 padding-top: 22px;
                 padding-bottom: 28px;
+            }
+            #aegis-orb-container {
+                margin-top: 0;
             }
         }
 
@@ -584,7 +579,7 @@
 
         .tech-badge-item span {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(7px, 1.3vw, 9px);
+            font-size: clamp(12px, 1.3vw, 14px);
             letter-spacing: 0.1em;
             text-transform: uppercase;
             color: #ffffff;
