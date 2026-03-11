@@ -426,10 +426,14 @@
                 background-image: none;
                 filter: drop-shadow(0 0 8px rgba(var(--cyan),0.25));
             }
-            .glow-active {
-                color: #ffffff !important;
-                -webkit-text-fill-color: #ffffff !important;
-                filter: drop-shadow(0 0 18px rgba(var(--cyan),0.9)) !important;
+            /* Æ-GiS only — backronym is a sibling div, unaffected */
+            #aegis-greeting.glow-active {
+                color: #22d3ee !important;
+                -webkit-text-fill-color: #22d3ee !important;
+                filter:
+                    drop-shadow(0 0 8px rgba(var(--cyan), 1))
+                    drop-shadow(0 0 24px rgba(var(--cyan), 0.9))
+                    drop-shadow(0 0 48px rgba(var(--cyan), 0.6)) !important;
                 text-shadow: none !important;
             }
         }
@@ -740,7 +744,7 @@
                 <!-- Voice section -->
                 <div class="voice-section">
                     <!-- Orb — BASE CODE PRESERVED EXACTLY -->
-                    <div id="aegis-orb-wrapper" onclick="window.playCustomAudio()">
+                    <div id="aegis-orb-wrapper">
                         <div id="aegis-orb-container">
                             <span id="streaming-tag-top">Streaming</span>
                             <div class="fluid-grooves"></div>
@@ -857,19 +861,34 @@
             currentPlaylistIndex = 0;
         }
 
-        let _orbLastFire = 0;
-        window.playCustomAudio = function() {
-            // Debounce: ignore if fired within 400ms (prevents touch→synthetic-click double-fire)
-            const now = Date.now();
-            if (now - _orbLastFire < 400) return;
-            _orbLastFire = now;
-
+        function playCustomAudio() {
             const wrapper = document.getElementById('aegis-orb-wrapper');
-            if (activeAudio && !activeAudio.paused) { activeAudio.pause(); wrapper.classList.remove('is-playing'); return; }
-            if (activeAudio && activeAudio.paused && activeAudio.currentTime > 0) { activeAudio.play().catch(console.error); wrapper.classList.add('is-playing'); return; }
+            if (activeAudio && !activeAudio.paused) {
+                activeAudio.pause();
+                wrapper.classList.remove('is-playing');
+                return;
+            }
+            if (activeAudio && activeAudio.paused && activeAudio.currentTime > 0) {
+                activeAudio.play().catch(console.error);
+                wrapper.classList.add('is-playing');
+                return;
+            }
             if (!shuffledIndices.length) shufflePlaylist();
             loadAndPlayTrack();
-        };
+        }
+        window.playCustomAudio = playCustomAudio;
+
+        // On mobile: listen on touchend + preventDefault to kill synthetic click.
+        // On PC:     listen on click as normal.
+        const _orbEl = document.getElementById('aegis-orb-wrapper');
+        if ('ontouchstart' in window) {
+            _orbEl.addEventListener('touchend', function(e) {
+                e.preventDefault(); // stops the synthetic click from firing
+                playCustomAudio();
+            }, { passive: false });
+        } else {
+            _orbEl.addEventListener('click', playCustomAudio);
+        }
 
         function loadAndPlayTrack() {
             const wrapper = document.getElementById('aegis-orb-wrapper');
