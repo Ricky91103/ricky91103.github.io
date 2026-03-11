@@ -857,7 +857,13 @@
             currentPlaylistIndex = 0;
         }
 
+        let _orbLastFire = 0;
         window.playCustomAudio = function() {
+            // Debounce: ignore if fired within 400ms (prevents touch→synthetic-click double-fire)
+            const now = Date.now();
+            if (now - _orbLastFire < 400) return;
+            _orbLastFire = now;
+
             const wrapper = document.getElementById('aegis-orb-wrapper');
             if (activeAudio && !activeAudio.paused) { activeAudio.pause(); wrapper.classList.remove('is-playing'); return; }
             if (activeAudio && activeAudio.paused && activeAudio.currentTime > 0) { activeAudio.play().catch(console.error); wrapper.classList.add('is-playing'); return; }
