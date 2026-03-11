@@ -341,34 +341,6 @@
                 text-shadow: 0 0 10px rgba(var(--cyan),0.4);
             }
 
-            /* Clone: hidden until .do-scroll, then absolutely positioned */
-            #artist-name-clone {
-                font-family: 'Fira Code', monospace;
-                font-size: 8px; line-height: 14px;
-                color: #22d3ee; font-weight: 600;
-                letter-spacing: 0.1em; text-transform: uppercase;
-                display: none;
-            }
-            #song-name-clone {
-                font-family: 'Fira Code', monospace;
-                font-size: 9px; line-height: 14px;
-                color: #ffffff; font-weight: 600;
-                text-shadow: 0 0 10px rgba(var(--cyan),0.4);
-                letter-spacing: 0.02em;
-                display: none;
-            }
-
-            /* .do-scroll: both primary and clone go absolute for rAF control */
-            .do-scroll #artist-name,
-            .do-scroll #artist-name-clone,
-            .do-scroll #song-name,
-            .do-scroll #song-name-clone {
-                position: absolute;
-                left: 0; top: 0;
-                transform: translateX(-99999px);
-            }
-            .do-scroll #artist-name-clone,
-            .do-scroll #song-name-clone { display: block; }
         }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
@@ -918,33 +890,27 @@
                 if (artistEl && artistEl._scrollRaf) cancelAnimationFrame(artistEl._scrollRaf);
                 if (songEl   && songEl._scrollRaf)   cancelAnimationFrame(songEl._scrollRaf);
 
-                const needsArtistScroll = artistText.length > 10;
-                const needsSongScroll   = songText.length   > 10;
-
-                if (artistWin) artistWin.classList.toggle('do-scroll', needsArtistScroll);
-                if (songWin)   songWin.classList.toggle('do-scroll',   needsSongScroll);
-
                 /*
                  * startScroller(el, clone, win, gapCh)
                  *
-                 * Primary (el) and clone scroll left in lockstep.
-                 * Offset between them = cycle = textW + gapPx (gapCh chars of blank).
-                 * Window width = 10ch for both.
+                 * ≤10ch: centres text statically, hides clone.
+                 * >10ch: dual-span lockstep marquee, 5ch gap, 15px/s.
                  *
-                 * Primary starts centred: tx = (winW - textW) / 2
-                 * Clone starts one cycle to the right: tx + cycle
-                 * Wrap: when primary right edge exits left (tx + textW < 0) → tx += cycle
-                 * Speed: 15px/s
+                 * All spans are always position:absolute; left:0 (set in CSS).
+                 * JS writes transform:translateX(px) every rAF frame.
                  */
                 function startScroller(el, clone, win, gapCh) {
                     clone.textContent = el.textContent;
-                    // Double rAF: let do-scroll + nowrap styles settle before measuring
+                    // Double rAF: styles settled, scrollWidth accurate
                     requestAnimationFrame(() => requestAnimationFrame(() => {
                         const winW  = win.offsetWidth;
                         const textW = el.scrollWidth;
 
                         if (textW <= winW) {
-                            // Fits — centre statically
+                            // Short text: force absolute so translateX works, then centre
+                            el.style.position     = 'absolute';
+                            el.style.top          = '0';
+                            el.style.left         = '0';
                             el.style.transform    = `translateX(${(winW - textW) / 2}px)`;
                             clone.style.transform = 'translateX(-99999px)';
                             return;
@@ -977,19 +943,9 @@
                     }));
                 }
 
-                if (needsArtistScroll && artistWin && artistClone) {
-                    startScroller(artistEl, artistClone, artistWin, 5);
-                } else if (artistEl) {
-                    artistEl.style.transform = '';
-                    if (artistClone) artistClone.style.transform = 'translateX(-99999px)';
-                }
-
-                if (needsSongScroll && songWin && songClone) {
-                    startScroller(songEl, songClone, songWin, 5);
-                } else if (songEl) {
-                    songEl.style.transform = '';
-                    if (songClone) songClone.style.transform = 'translateX(-99999px)';
-                }
+                // Always call startScroller — it centres short text and scrolls long text
+                if (artistWin && artistClone) startScroller(artistEl, artistClone, artistWin, 5);
+                if (songWin   && songClone)   startScroller(songEl,   songClone,   songWin,   5);
             }
 
             activeAudio = new Audio(track.url);
