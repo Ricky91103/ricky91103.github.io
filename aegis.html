@@ -300,7 +300,7 @@
 
         /*
          * ── MOBILE ONLY ──
-         * Artist window: 15ch — wraps if ≤15ch, scrolls if >15ch
+         * Artist window: 10ch — wraps if ≤10ch, scrolls if >10ch
          * Song window:   10ch — wraps if ≤10ch, scrolls if >10ch
          *
          * Scroll keyframes: text exits left, then jumps to right edge
@@ -313,9 +313,9 @@
                 gap: 2px;
             }
 
-            /* Artist window: 15ch, auto height for wrapping */
+            /* Artist window: 10ch, auto height for wrapping */
             .artist-window {
-                width: 15ch;
+                width: 10ch;
                 font-size: 8px;
                 min-height: 14px;
                 height: auto;
@@ -957,7 +957,7 @@
                 if (window._scrollRafArtist) cancelAnimationFrame(window._scrollRafArtist);
                 if (window._scrollRafSong)   cancelAnimationFrame(window._scrollRafSong);
 
-                const needsArtistScroll = artistText.length > 15;
+                const needsArtistScroll = artistText.length > 10;
                 const needsSongScroll   = songText.length   > 10;
 
                 artistWin && artistWin.classList.toggle('do-scroll', needsArtistScroll);
@@ -995,7 +995,9 @@
                 function startScroller(el, clone, win, windowCh, gapCh) {
                     clone.textContent = el.textContent;
 
-                    requestAnimationFrame(() => {
+                    // Double rAF: first frame applies do-scroll class styles (nowrap),
+                    // second frame measures scrollWidth after layout is complete.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
                         const winW  = win.offsetWidth;
                         const textW = el.scrollWidth;
 
@@ -1035,11 +1037,11 @@
                         el.style.transform    = `translateX(${tx}px)`;
                         clone.style.transform = `translateX(${tx + cycle}px)`;
                         el._scrollRaf = requestAnimationFrame(tick);
-                    });
+                    }));
                 }
 
                 if (needsArtistScroll && artistWin && artistClone) {
-                    startScroller(artistEl, artistClone, artistWin, 15, 10);
+                    startScroller(artistEl, artistClone, artistWin, 10, 5);
                 } else if (artistEl) {
                     artistEl.style.transform = '';
                     if (artistClone) artistClone.style.transform = 'translateX(-99999px)';
