@@ -878,14 +878,27 @@
         }
         window.playCustomAudio = playCustomAudio;
 
-        // On mobile: listen on touchend + preventDefault to kill synthetic click.
-        // On PC:     listen on click as normal.
+        // On mobile: touchend + preventDefault + stopPropagation so no synthetic
+        // click fires and no outer handler sees this event.
+        // On PC: normal click.
         const _orbEl = document.getElementById('aegis-orb-wrapper');
         if ('ontouchstart' in window) {
             _orbEl.addEventListener('touchend', function(e) {
-                e.preventDefault(); // stops the synthetic click from firing
+                e.preventDefault();
+                e.stopPropagation();
                 playCustomAudio();
             }, { passive: false });
+
+            // Guard: if audio is playing but is-playing class was removed by
+            // anything other than playCustomAudio (e.g. browser blur/tap-elsewhere
+            // quirks on iOS), restore it immediately.
+            const _observer = new MutationObserver(() => {
+                if (activeAudio && !activeAudio.paused &&
+                    !_orbEl.classList.contains('is-playing')) {
+                    _orbEl.classList.add('is-playing');
+                }
+            });
+            _observer.observe(_orbEl, { attributes: true, attributeFilter: ['class'] });
         } else {
             _orbEl.addEventListener('click', playCustomAudio);
         }
