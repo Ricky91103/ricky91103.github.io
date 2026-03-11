@@ -373,14 +373,33 @@
                 align-items: flex-start;
             }
             .artist-window.do-scroll #artist-name,
-            .song-window.do-scroll #song-name {
+            .artist-window.do-scroll #artist-name-clone,
+            .song-window.do-scroll #song-name,
+            .song-window.do-scroll #song-name-clone {
                 white-space: nowrap;
                 word-break: normal;
                 width: auto;
                 position: absolute;
                 left: 0; top: 0;
-                transform: translateX(0);
+                transform: translateX(-99999px);
             }
+            #artist-name-clone {
+                font-family: 'Fira Code', monospace;
+                font-size: 8px; line-height: 14px;
+                color: #22d3ee; font-weight: 600;
+                letter-spacing: 0.1em; text-transform: uppercase;
+                display: none;
+            }
+            #song-name-clone {
+                font-family: 'Fira Code', monospace;
+                font-size: 9px; line-height: 14px;
+                color: #ffffff; font-weight: 600;
+                text-shadow: 0 0 10px rgba(var(--cyan),0.4);
+                letter-spacing: 0.02em;
+                display: none;
+            }
+            .do-scroll #artist-name-clone,
+            .do-scroll #song-name-clone { display: block; }
 
             /*
              * Scroll is driven entirely by JS (rAF loop).
@@ -796,8 +815,14 @@
                                 <img src="https://lh3.googleusercontent.com/d/1qGH5yISE0wQ4dkntal8jjclXoeSxGjLd" class="w-full h-full object-cover" />
                             </div>
                             <div id="track-info-display">
-                                <div class="artist-window" id="artist-name-window"><span id="artist-name">SYSTEM</span></div>
-                                <div class="song-window" id="song-name-window"><span id="song-name">IDLE</span></div>
+                                <div class="artist-window" id="artist-name-window">
+                                    <span id="artist-name">SYSTEM</span>
+                                    <span id="artist-name-clone" aria-hidden="true"></span>
+                                </div>
+                                <div class="song-window" id="song-name-window">
+                                    <span id="song-name">IDLE</span>
+                                    <span id="song-name-clone" aria-hidden="true"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -939,44 +964,55 @@
                 songWin   && songWin.classList.toggle('do-scroll',   needsSongScroll);
 
                 /*
-                 * startScroller(el, win, windowCh)
+                 * startScroller(el, clone, win, windowCh, gapCh)
                  *
-                 * Geometry (all in px, absolute coords within the clipping window):
-                 *   - el is position:absolute; left:50% inside win
-                 *   - translateX(tx) shifts el so its visual left = win.width/2 + tx
-                 *   - centreX  = -(textW/2)          → text centred in window
-                 *   - exitX    = -(textW/2 + winW/2) + 5chPx
-                 *                → text right edge is 5ch from the left edge of window
-                 *   - enterX   = winW/2 + textW/2    → text left edge = right edge of window
+                 * Two elements (primary + clone) scroll in lockstep.
+                 * They are offset by (textW + gapPx) so the clone is always
+                 * exactly one "slot" behind the primary.
                  *
-                 * Speed: 30px/s  (feels natural for small text)
-                 * At exitX: instant jump to enterX, resume scrolling toward centreX.
+                 * When 5ch of the primary are still visible at the left edge,
+                 * the clone is already entering from the right — simultaneously.
+                 * This is achieved by setting the initial clone offset to put it
+                 * at the right edge of the window when primary has 5ch remaining.
+                 *
+                 * "5ch remaining" means:  primaryTx = -(textW - 5chPx)
+                 * At that moment clone is at: primaryTx + cycle
+                 *   = -(textW - 5chPx) + textW + gapPx
+                 *   = 5chPx + gapPx
+                 * We want clone left edge = winW at that moment:
+                 *   clone tx = winW  →  so offset = winW - 5chPx - gapPx ... but
+                 * easier: just set cycle = textW + gapPx and let the math fall out.
+                 *
+                 * Primary starts centred: tx0 = (winW - textW) / 2
+                 * Clone starts:           tx0 + cycle  (one full slot to the right)
+                 *
+                 * Wrap rule: when primary.tx + textW < 0, add cycle to primary.
+                 * Clone always = primary.tx + cycle.
                  */
-                function startScroller(el, win, windowCh, gapCh) {
+                const artistClone = document.getElementById('artist-name-clone');
+                const songClone   = document.getElementById('song-name-clone');
+
+                function startScroller(el, clone, win, windowCh, gapCh) {
+                    clone.textContent = el.textContent;
+
                     requestAnimationFrame(() => {
                         const winW  = win.offsetWidth;
                         const textW = el.scrollWidth;
-                        if (textW <= winW) { el.style.transform = `translateX(${(winW - textW) / 2}px)`; return; }
 
-                        // All tx values are px offsets from window left edge (el has left:0).
-                        //
-                        // Scroll sequence:
-                        //   1. Start centred.
-                        //   2. Scroll left at constant speed.
-                        //   3. When last 5ch of text exit the left edge (text fully gone):
-                        //        tx = -textW  (right edge of text = window left edge)
-                        //   4. Instantly jump to enterX = winW + gapPx
-                        //        → gapCh blank characters scroll past before text re-enters.
-                        //   5. Continue scrolling until centred again.
+                        if (textW <= winW) {
+                            const cx = (winW - textW) / 2;
+                            el.style.transform    = `translateX(${cx}px)`;
+                            clone.style.transform = 'translateX(-99999px)';
+                            return;
+                        }
 
-                        const chPx    = winW / windowCh;       // px per character in this window
-                        const gapPx   = chPx * gapCh;          // blank gap in px
-                        const centreX = (winW - textW) / 2;    // text centred in window
-                        const exitX   = -textW;                 // text fully exited left
-                        const enterX  = winW + gapPx;          // text starts this far right of window
-                        const speed   = 15;                     // px per second
+                        const chPx  = winW / windowCh;
+                        const gapPx = chPx * gapCh;
+                        const cycle = textW + gapPx;    // distance between primary and clone
 
-                        let tx    = centreX;
+                        // Primary starts centred; clone one cycle to the right
+                        let tx    = (winW - textW) / 2;
+                        const speed = 15; // px/s
                         let lastT = null;
 
                         function tick(now) {
@@ -986,26 +1022,35 @@
 
                             tx -= speed * dt;
 
-                            if (tx <= exitX) {
-                                // Last 5ch just left — jump to right side with gap
-                                tx = enterX;
-                            }
+                            // Wrap primary when it has fully exited left
+                            if (tx + textW < 0) tx += cycle;
 
-                            el.style.transform = `translateX(${tx}px)`;
+                            el.style.transform    = `translateX(${tx}px)`;
+                            clone.style.transform = `translateX(${tx + cycle}px)`;
+
                             el._scrollRaf = requestAnimationFrame(tick);
                         }
 
                         if (el._scrollRaf) cancelAnimationFrame(el._scrollRaf);
-                        el.style.transform = `translateX(${centreX}px)`;
+                        el.style.transform    = `translateX(${tx}px)`;
+                        clone.style.transform = `translateX(${tx + cycle}px)`;
                         el._scrollRaf = requestAnimationFrame(tick);
                     });
                 }
 
-                if (needsArtistScroll && artistWin) startScroller(artistEl, artistWin, 15, 10);
-                else if (artistEl) { artistEl.style.transform = ''; }
+                if (needsArtistScroll && artistWin && artistClone) {
+                    startScroller(artistEl, artistClone, artistWin, 15, 10);
+                } else if (artistEl) {
+                    artistEl.style.transform = '';
+                    if (artistClone) artistClone.style.transform = 'translateX(-99999px)';
+                }
 
-                if (needsSongScroll && songWin) startScroller(songEl, songWin, 10, 5);
-                else if (songEl) { songEl.style.transform = ''; }
+                if (needsSongScroll && songWin && songClone) {
+                    startScroller(songEl, songClone, songWin, 10, 5);
+                } else if (songEl) {
+                    songEl.style.transform = '';
+                    if (songClone) songClone.style.transform = 'translateX(-99999px)';
+                }
             }
             activeAudio = new Audio(track.url);
             wrapper.classList.add('is-playing');
