@@ -952,23 +952,29 @@
                  * Speed: 30px/s  (feels natural for small text)
                  * At exitX: instant jump to enterX, resume scrolling toward centreX.
                  */
-                function startScroller(el, win, windowCh) {
+                function startScroller(el, win, windowCh, gapCh) {
                     requestAnimationFrame(() => {
                         const winW  = win.offsetWidth;
                         const textW = el.scrollWidth;
                         if (textW <= winW) { el.style.transform = `translateX(${(winW - textW) / 2}px)`; return; }
 
-                        // All tx values are px from window left edge (el has left:0)
-                        // centreX : text horizontally centred in window
-                        // exitX   : text right edge = 5ch from right of window
-                        //           → tx = winW - chPx*5 - textW
-                        // enterX  : text left edge flush with window right edge
-                        //           → tx = winW
-                        const chPx   = winW / windowCh;
-                        const centreX = (winW - textW) / 2;
-                        const exitX   = winW - chPx * 5 - textW;  // negative when text > window
-                        const enterX  = winW;
-                        const speed   = 18; // px per second — slow LED feel
+                        // All tx values are px offsets from window left edge (el has left:0).
+                        //
+                        // Scroll sequence:
+                        //   1. Start centred.
+                        //   2. Scroll left at constant speed.
+                        //   3. When last 5ch of text exit the left edge (text fully gone):
+                        //        tx = -textW  (right edge of text = window left edge)
+                        //   4. Instantly jump to enterX = winW + gapPx
+                        //        → gapCh blank characters scroll past before text re-enters.
+                        //   5. Continue scrolling until centred again.
+
+                        const chPx    = winW / windowCh;       // px per character in this window
+                        const gapPx   = chPx * gapCh;          // blank gap in px
+                        const centreX = (winW - textW) / 2;    // text centred in window
+                        const exitX   = -textW;                 // text fully exited left
+                        const enterX  = winW + gapPx;          // text starts this far right of window
+                        const speed   = 15;                     // px per second
 
                         let tx    = centreX;
                         let lastT = null;
@@ -978,10 +984,10 @@
                             const dt = (now - lastT) / 1000;
                             lastT = now;
 
-                            tx -= speed * dt;  // scroll left
+                            tx -= speed * dt;
 
-                            // When only 5ch remain visible, jump new instance to right edge
                             if (tx <= exitX) {
+                                // Last 5ch just left — jump to right side with gap
                                 tx = enterX;
                             }
 
@@ -995,10 +1001,10 @@
                     });
                 }
 
-                if (needsArtistScroll && artistWin) startScroller(artistEl, artistWin, 15);
+                if (needsArtistScroll && artistWin) startScroller(artistEl, artistWin, 15, 10);
                 else if (artistEl) { artistEl.style.transform = ''; }
 
-                if (needsSongScroll && songWin) startScroller(songEl, songWin, 10);
+                if (needsSongScroll && songWin) startScroller(songEl, songWin, 10, 5);
                 else if (songEl) { songEl.style.transform = ''; }
             }
             activeAudio = new Audio(track.url);
