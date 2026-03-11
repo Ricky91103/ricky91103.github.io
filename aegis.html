@@ -383,32 +383,12 @@
             }
 
             /*
-             * Artist scroll (15ch window):
-             * Exits left at 44% — at that point ~5ch of the 15ch window
-             * are still filled → instant jump to right edge at 45%.
-             * Re-enters and settles to centre by 100%.
+             * Scroll is driven entirely by JS (rAF loop).
+             * CSS just ensures the element is positioned ready for JS to move it.
+             * No keyframes needed — JS writes el.style.transform each frame.
              */
-            @keyframes led-scroll-artist {
-                0%     { transform: translateX(-50%);  }   /* centred        */
-                44%    { transform: translateX(-155%); }   /* ~5ch remaining  */
-                44.01% { transform: translateX(105%);  }   /* jump: right edge */
-                100%   { transform: translateX(-50%);  }   /* back to centre  */
-            }
-
-            /*
-             * Song scroll (10ch window):
-             * Exits left at 44% — ~5ch of the 10ch window still visible
-             * → instant jump to right edge at 44.01%.
-             */
-            @keyframes led-scroll-song {
-                0%     { transform: translateX(-50%);  }   /* centred        */
-                44%    { transform: translateX(-155%); }   /* ~5ch remaining  */
-                44.01% { transform: translateX(105%);  }   /* jump: right edge */
-                100%   { transform: translateX(-50%);  }   /* back to centre  */
-            }
-
-            .is-playing .do-scroll #artist-name { animation: led-scroll-artist 14s linear infinite; }
-            .is-playing .do-scroll #song-name   { animation: led-scroll-song   14s linear infinite; }
+            .is-playing .do-scroll #artist-name,
+            .is-playing .do-scroll #song-name { animation: none; }
         }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
@@ -939,11 +919,82 @@
             document.getElementById('artist-name').innerText = artistText;
             document.getElementById('song-name').innerText   = songText;
 
-            // Mobile: artist scrolls if >15ch, song scrolls if >10ch
+            // Mobile scroll — rAF-based, pixel-exact
             const artistWin = document.getElementById('artist-name-window') || document.querySelector('.artist-window');
             const songWin   = document.getElementById('song-name-window')   || document.querySelector('.song-window');
-            if (artistWin) artistWin.classList.toggle('do-scroll', artistText.length > 15);
-            if (songWin)   songWin.classList.toggle('do-scroll',   songText.length   > 10);
+            const isMobileNow = window.matchMedia('(max-width: 639px)').matches;
+
+            if (isMobileNow) {
+                const artistEl = document.getElementById('artist-name');
+                const songEl   = document.getElementById('song-name');
+
+                // Stop any previous rAF loops
+                if (window._scrollRafArtist) cancelAnimationFrame(window._scrollRafArtist);
+                if (window._scrollRafSong)   cancelAnimationFrame(window._scrollRafSong);
+
+                const needsArtistScroll = artistText.length > 15;
+                const needsSongScroll   = songText.length   > 10;
+
+                artistWin && artistWin.classList.toggle('do-scroll', needsArtistScroll);
+                songWin   && songWin.classList.toggle('do-scroll',   needsSongScroll);
+
+                /*
+                 * startScroller(el, win, windowCh)
+                 *
+                 * Geometry (all in px, absolute coords within the clipping window):
+                 *   - el is position:absolute; left:50% inside win
+                 *   - translateX(tx) shifts el so its visual left = win.width/2 + tx
+                 *   - centreX  = -(textW/2)          → text centred in window
+                 *   - exitX    = -(textW/2 + winW/2) + 5chPx
+                 *                → text right edge is 5ch from the left edge of window
+                 *   - enterX   = winW/2 + textW/2    → text left edge = right edge of window
+                 *
+                 * Speed: 30px/s  (feels natural for small text)
+                 * At exitX: instant jump to enterX, resume scrolling toward centreX.
+                 */
+                function startScroller(el, win, windowCh) {
+                    requestAnimationFrame(() => {
+                        const winW   = win.offsetWidth;
+                        const textW  = el.scrollWidth;
+                        if (textW <= winW) { el.style.transform = ''; return; } // fits, no scroll
+
+                        const chPx   = winW / windowCh;          // px per character
+                        const centreX = -(textW / 2);
+                        const exitX   = -(textW / 2 + winW / 2) + chPx * 5;
+                        const enterX  =   winW / 2 + textW / 2;
+                        const speed   = 30; // px per second
+
+                        let tx      = centreX;
+                        let lastT   = null;
+
+                        function tick(now) {
+                            if (!lastT) lastT = now;
+                            const dt = (now - lastT) / 1000; // seconds
+                            lastT = now;
+
+                            tx -= speed * dt;  // scroll left
+
+                            if (tx <= exitX) {
+                                tx = enterX;   // instant jump to right edge
+                            }
+
+                            el.style.transform = `translateX(${tx}px)`;
+                            const rafId = requestAnimationFrame(tick);
+                            el._scrollRaf = rafId;
+                        }
+
+                        if (el._scrollRaf) cancelAnimationFrame(el._scrollRaf);
+                        el.style.transform = `translateX(${centreX}px)`;
+                        el._scrollRaf = requestAnimationFrame(tick);
+                    });
+                }
+
+                if (needsArtistScroll && artistWin) startScroller(artistEl, artistWin, 15);
+                else if (artistEl) { artistEl.style.transform = ''; }
+
+                if (needsSongScroll && songWin) startScroller(songEl, songWin, 10);
+                else if (songEl) { songEl.style.transform = ''; }
+            }
             activeAudio = new Audio(track.url);
             wrapper.classList.add('is-playing');
             activeAudio.onended = () => { currentPlaylistIndex++; loadAndPlayTrack(); };
