@@ -299,66 +299,76 @@
         }
 
         /*
-         * ── MOBILE ONLY: track display ──
-         * Both windows: 10ch wide.
-         * Text wraps if > 10ch, shown statically if ≤ 10ch.
-         * No scrolling.
+         * ── MOBILE ONLY ──
+         * Both windows 10ch wide, fixed 14px height.
+         * ≤10ch: static centred. >10ch: LED marquee scroll, 5ch gap.
+         * Text NEVER wraps — nowrap always.
          */
         @media (max-width: 639px) {
-            #track-info-display {
+            #track-info-display { width: auto; gap: 2px; }
+
+            .artist-window, .song-window {
+                width: 10ch;
+                height: 14px;
+                min-height: 14px;
+                max-height: 14px;
+                overflow: hidden;
+                position: relative;
+                display: block;
+            }
+
+            /* ALL spans: always absolute, always nowrap — JS drives transform */
+            #artist-name, #artist-name-clone,
+            #song-name,   #song-name-clone {
+                white-space: nowrap;
+                word-break: normal;
+                overflow: visible;
                 width: auto;
-                gap: 2px;
+                position: absolute;
+                left: 0; top: 0;
+                line-height: 14px;
+                transform: translateX(-99999px);
+            }
+            #artist-name, #artist-name-clone {
+                font-size: 8px; color: #22d3ee;
+                font-family: 'Fira Code', monospace;
+                font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+            }
+            #song-name, #song-name-clone {
+                font-size: 9px; color: #ffffff;
+                font-family: 'Fira Code', monospace;
+                font-weight: 600; letter-spacing: 0.02em;
+                text-shadow: 0 0 10px rgba(var(--cyan),0.4);
             }
 
-            .artist-window {
-                width: 10ch;
-                font-size: 8px;
-                min-height: 14px;
-                height: auto;
-                overflow: visible;
-                position: relative;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+            /* Clone: hidden until .do-scroll, then absolutely positioned */
+            #artist-name-clone {
+                font-family: 'Fira Code', monospace;
+                font-size: 8px; line-height: 14px;
+                color: #22d3ee; font-weight: 600;
+                letter-spacing: 0.1em; text-transform: uppercase;
+                display: none;
+            }
+            #song-name-clone {
+                font-family: 'Fira Code', monospace;
+                font-size: 9px; line-height: 14px;
+                color: #ffffff; font-weight: 600;
+                text-shadow: 0 0 10px rgba(var(--cyan),0.4);
+                letter-spacing: 0.02em;
+                display: none;
             }
 
-            .song-window {
-                width: 10ch;
-                font-size: 9px;
-                min-height: 14px;
-                height: auto;
-                overflow: visible;
-                position: relative;
-                display: flex;
-                justify-content: center;
-                align-items: center;
+            /* .do-scroll: both primary and clone go absolute for rAF control */
+            .do-scroll #artist-name,
+            .do-scroll #artist-name-clone,
+            .do-scroll #song-name,
+            .do-scroll #song-name-clone {
+                position: absolute;
+                left: 0; top: 0;
+                transform: translateX(-99999px);
             }
-
-            #artist-name {
-                font-size: 8px;
-                line-height: 1.3;
-                white-space: normal;
-                word-break: break-word;
-                overflow: visible;
-                text-overflow: unset;
-                width: 100%;
-                position: static;
-                transform: none;
-                text-align: center;
-            }
-
-            #song-name {
-                font-size: 9px;
-                line-height: 1.3;
-                white-space: normal;
-                word-break: break-word;
-                overflow: visible;
-                text-overflow: unset;
-                width: 100%;
-                position: static;
-                transform: none;
-                text-align: center;
-            }
+            .do-scroll #artist-name-clone,
+            .do-scroll #song-name-clone { display: block; }
         }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
@@ -768,9 +778,11 @@
                             <div id="track-info-display">
                                 <div class="artist-window" id="artist-name-window">
                                     <span id="artist-name">SYSTEM</span>
+                                    <span id="artist-name-clone" aria-hidden="true"></span>
                                 </div>
                                 <div class="song-window" id="song-name-window">
                                     <span id="song-name">IDLE</span>
+                                    <span id="song-name-clone" aria-hidden="true"></span>
                                 </div>
                             </div>
                         </div>
@@ -893,7 +905,93 @@
             document.getElementById('artist-name').innerText = artistText;
             document.getElementById('song-name').innerText   = songText;
 
-            // Mobile: no scrolling — text always wraps naturally inside 10ch window
+            // Mobile: ≤10ch → static centred; >10ch → dual-element LED marquee
+            if (window.matchMedia('(max-width: 639px)').matches) {
+                const artistWin   = document.getElementById('artist-name-window');
+                const songWin     = document.getElementById('song-name-window');
+                const artistEl    = document.getElementById('artist-name');
+                const songEl      = document.getElementById('song-name');
+                const artistClone = document.getElementById('artist-name-clone');
+                const songClone   = document.getElementById('song-name-clone');
+
+                // Cancel any running rAF loops
+                if (artistEl && artistEl._scrollRaf) cancelAnimationFrame(artistEl._scrollRaf);
+                if (songEl   && songEl._scrollRaf)   cancelAnimationFrame(songEl._scrollRaf);
+
+                const needsArtistScroll = artistText.length > 10;
+                const needsSongScroll   = songText.length   > 10;
+
+                if (artistWin) artistWin.classList.toggle('do-scroll', needsArtistScroll);
+                if (songWin)   songWin.classList.toggle('do-scroll',   needsSongScroll);
+
+                /*
+                 * startScroller(el, clone, win, gapCh)
+                 *
+                 * Primary (el) and clone scroll left in lockstep.
+                 * Offset between them = cycle = textW + gapPx (gapCh chars of blank).
+                 * Window width = 10ch for both.
+                 *
+                 * Primary starts centred: tx = (winW - textW) / 2
+                 * Clone starts one cycle to the right: tx + cycle
+                 * Wrap: when primary right edge exits left (tx + textW < 0) → tx += cycle
+                 * Speed: 15px/s
+                 */
+                function startScroller(el, clone, win, gapCh) {
+                    clone.textContent = el.textContent;
+                    // Double rAF: let do-scroll + nowrap styles settle before measuring
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        const winW  = win.offsetWidth;
+                        const textW = el.scrollWidth;
+
+                        if (textW <= winW) {
+                            // Fits — centre statically
+                            el.style.transform    = `translateX(${(winW - textW) / 2}px)`;
+                            clone.style.transform = 'translateX(-99999px)';
+                            return;
+                        }
+
+                        // px per character = winW / 10 (both windows are 10ch)
+                        const chPx  = winW / 10;
+                        const gapPx = chPx * gapCh;
+                        const cycle = textW + gapPx;
+                        const speed = 15; // px/s
+
+                        let tx    = (winW - textW) / 2;
+                        let lastT = null;
+
+                        function tick(now) {
+                            if (!lastT) lastT = now;
+                            const dt = (now - lastT) / 1000;
+                            lastT = now;
+                            tx -= speed * dt;
+                            if (tx + textW < 0) tx += cycle;
+                            el.style.transform    = `translateX(${tx}px)`;
+                            clone.style.transform = `translateX(${tx + cycle}px)`;
+                            el._scrollRaf = requestAnimationFrame(tick);
+                        }
+
+                        if (el._scrollRaf) cancelAnimationFrame(el._scrollRaf);
+                        el.style.transform    = `translateX(${tx}px)`;
+                        clone.style.transform = `translateX(${tx + cycle}px)`;
+                        el._scrollRaf = requestAnimationFrame(tick);
+                    }));
+                }
+
+                if (needsArtistScroll && artistWin && artistClone) {
+                    startScroller(artistEl, artistClone, artistWin, 5);
+                } else if (artistEl) {
+                    artistEl.style.transform = '';
+                    if (artistClone) artistClone.style.transform = 'translateX(-99999px)';
+                }
+
+                if (needsSongScroll && songWin && songClone) {
+                    startScroller(songEl, songClone, songWin, 5);
+                } else if (songEl) {
+                    songEl.style.transform = '';
+                    if (songClone) songClone.style.transform = 'translateX(-99999px)';
+                }
+            }
+
             activeAudio = new Audio(track.url);
             wrapper.classList.add('is-playing');
             activeAudio.onended = () => { currentPlaylistIndex++; loadAndPlayTrack(); };
