@@ -378,8 +378,8 @@
                 word-break: normal;
                 width: auto;
                 position: absolute;
-                left: 50%; top: 0;
-                transform: translateX(-50%);
+                left: 0; top: 0;
+                transform: translateX(0);
             }
 
             /*
@@ -954,33 +954,39 @@
                  */
                 function startScroller(el, win, windowCh) {
                     requestAnimationFrame(() => {
-                        const winW   = win.offsetWidth;
-                        const textW  = el.scrollWidth;
-                        if (textW <= winW) { el.style.transform = ''; return; } // fits, no scroll
+                        const winW  = win.offsetWidth;
+                        const textW = el.scrollWidth;
+                        if (textW <= winW) { el.style.transform = `translateX(${(winW - textW) / 2}px)`; return; }
 
-                        const chPx   = winW / windowCh;          // px per character
-                        const centreX = -(textW / 2);
-                        const exitX   = -(textW / 2 + winW / 2) + chPx * 5;
-                        const enterX  =   winW / 2 + textW / 2;
-                        const speed   = 30; // px per second
+                        // All tx values are px from window left edge (el has left:0)
+                        // centreX : text horizontally centred in window
+                        // exitX   : text right edge = 5ch from right of window
+                        //           → tx = winW - chPx*5 - textW
+                        // enterX  : text left edge flush with window right edge
+                        //           → tx = winW
+                        const chPx   = winW / windowCh;
+                        const centreX = (winW - textW) / 2;
+                        const exitX   = winW - chPx * 5 - textW;  // negative when text > window
+                        const enterX  = winW;
+                        const speed   = 18; // px per second — slow LED feel
 
-                        let tx      = centreX;
-                        let lastT   = null;
+                        let tx    = centreX;
+                        let lastT = null;
 
                         function tick(now) {
                             if (!lastT) lastT = now;
-                            const dt = (now - lastT) / 1000; // seconds
+                            const dt = (now - lastT) / 1000;
                             lastT = now;
 
                             tx -= speed * dt;  // scroll left
 
+                            // When only 5ch remain visible, jump new instance to right edge
                             if (tx <= exitX) {
-                                tx = enterX;   // instant jump to right edge
+                                tx = enterX;
                             }
 
                             el.style.transform = `translateX(${tx}px)`;
-                            const rafId = requestAnimationFrame(tick);
-                            el._scrollRaf = rafId;
+                            el._scrollRaf = requestAnimationFrame(tick);
                         }
 
                         if (el._scrollRaf) cancelAnimationFrame(el._scrollRaf);
