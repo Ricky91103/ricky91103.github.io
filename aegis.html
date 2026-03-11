@@ -298,16 +298,24 @@
             width: 100%;
         }
 
-        /* ── MOBILE ONLY: 10ch windows, wrap if ≤10ch, scroll if >10ch ── */
+        /*
+         * ── MOBILE ONLY ──
+         * Artist window: 15ch — wraps if ≤15ch, scrolls if >15ch
+         * Song window:   10ch — wraps if ≤10ch, scrolls if >10ch
+         *
+         * Scroll keyframes: text exits left, then jumps to right edge
+         * timed so the incoming text appears when 5ch of the outgoing
+         * text are still visible (45% mark = ~5ch remain in window).
+         */
         @media (max-width: 639px) {
             #track-info-display {
                 width: auto;
                 gap: 2px;
             }
 
-            /* Window: 10ch wide, auto height to allow wrapping */
+            /* Artist window: 15ch, auto height for wrapping */
             .artist-window {
-                width: 10ch;
+                width: 15ch;
                 font-size: 8px;
                 min-height: 14px;
                 height: auto;
@@ -317,6 +325,8 @@
                 justify-content: center;
                 align-items: center;
             }
+
+            /* Song window: 10ch, auto height for wrapping */
             .song-window {
                 width: 10ch;
                 font-size: 9px;
@@ -329,7 +339,7 @@
                 align-items: center;
             }
 
-            /* Default: wrap (for text ≤ 10ch) */
+            /* Default: wrapped, static, centred */
             #artist-name {
                 font-size: 8px;
                 line-height: 1.3;
@@ -355,10 +365,7 @@
                 text-align: center;
             }
 
-            /*
-             * .do-scroll applied by JS when text > 10ch.
-             * Switches back to nowrap + absolute + scroll animation.
-             */
+            /* .do-scroll: lock height, switch to nowrap + absolute for scrolling */
             .artist-window.do-scroll,
             .song-window.do-scroll {
                 height: 14px;
@@ -375,15 +382,33 @@
                 transform: translateX(-50%);
             }
 
-            @keyframes led-scroll-mobile {
-                0%      { transform: translateX(-50%); }
-                49.99%  { transform: translateX(-160%); }
-                50%     { transform: translateX(80%);   }
-                100%    { transform: translateX(-50%); }
+            /*
+             * Artist scroll (15ch window):
+             * Exits left at 44% — at that point ~5ch of the 15ch window
+             * are still filled → instant jump to right edge at 45%.
+             * Re-enters and settles to centre by 100%.
+             */
+            @keyframes led-scroll-artist {
+                0%     { transform: translateX(-50%);  }   /* centred        */
+                44%    { transform: translateX(-155%); }   /* ~5ch remaining  */
+                44.01% { transform: translateX(105%);  }   /* jump: right edge */
+                100%   { transform: translateX(-50%);  }   /* back to centre  */
             }
 
-            .is-playing .do-scroll #artist-name { animation: led-scroll-mobile 14s linear infinite; }
-            .is-playing .do-scroll #song-name   { animation: led-scroll-mobile 14s linear infinite; }
+            /*
+             * Song scroll (10ch window):
+             * Exits left at 44% — ~5ch of the 10ch window still visible
+             * → instant jump to right edge at 44.01%.
+             */
+            @keyframes led-scroll-song {
+                0%     { transform: translateX(-50%);  }   /* centred        */
+                44%    { transform: translateX(-155%); }   /* ~5ch remaining  */
+                44.01% { transform: translateX(105%);  }   /* jump: right edge */
+                100%   { transform: translateX(-50%);  }   /* back to centre  */
+            }
+
+            .is-playing .do-scroll #artist-name { animation: led-scroll-artist 14s linear infinite; }
+            .is-playing .do-scroll #song-name   { animation: led-scroll-song   14s linear infinite; }
         }
 
         /* ─── AEGIS HEADING ──────────────────────────── */
@@ -914,10 +939,10 @@
             document.getElementById('artist-name').innerText = artistText;
             document.getElementById('song-name').innerText   = songText;
 
-            // Mobile: toggle scroll animation only when text exceeds 10 chars
+            // Mobile: artist scrolls if >15ch, song scrolls if >10ch
             const artistWin = document.getElementById('artist-name-window') || document.querySelector('.artist-window');
             const songWin   = document.getElementById('song-name-window')   || document.querySelector('.song-window');
-            if (artistWin) artistWin.classList.toggle('do-scroll', artistText.length > 10);
+            if (artistWin) artistWin.classList.toggle('do-scroll', artistText.length > 15);
             if (songWin)   songWin.classList.toggle('do-scroll',   songText.length   > 10);
             activeAudio = new Audio(track.url);
             wrapper.classList.add('is-playing');
