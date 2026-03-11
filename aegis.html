@@ -547,6 +547,11 @@
             flex-shrink: 0;
         }
 
+        /* PC/tablet: nudge orb group 6px north */
+        @media (min-width: 640px) {
+            #aegis-orb-container { margin-top: -6px; }
+        }
+
         .voice-text-group {
             flex-grow: 1;
             display: flex;
